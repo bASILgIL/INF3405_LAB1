@@ -26,7 +26,7 @@ public class Client {
 			// Création d'une connection
 			
 			socket = new Socket(serverAddress,serverPort);
-			System.out.format("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
+			System.out.printf("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
 			
 			// Création d'un canal pour recevoir les messages du serveur
 			
@@ -58,7 +58,57 @@ public class Client {
 			return;
 		}
 		
+		// Message de validation de connection
 		
+		System.out.println("La connection a été établie");
+		
+		// Demande d'image à traiter
+		
+		String[] imageToTreat = getImageToProcess();
+		
+		// Envoie de l'image à traiter et du nom que l'utilisateur désire lui asttribuer
+		// TODO : gerer lenvoi => dans une methode
+		
+		output.writeUTF(imageToTreat[0]);
+		output.writeUTF(imageToTreat[1]);
+		
+		/*
+		BufferedImage image = ImageIO.read(new File("C:\\Users\\Jakub\\Pictures\\test.jpg"));
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", byteArrayOutputStream);
+
+        byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+        outputStream.write(size);
+        outputStream.write(byteArrayOutputStream.toByteArray());
+        outputStream.flush();
+        System.out.println("Flushed: " + System.currentTimeMillis());
+        */
+		
+		System.out.printf("L'image %s a été envoyé à %s pour être traitée.", imageToTreat[0], System.nanoTime());
+		
+		// Reception de l'image traitée
+		// TODO : gerer la reception de limage => dans une methode
+		
+		String processedImage = input.readUTF();
+		
+		/*
+		byte[] sizeAr = new byte[4];
+        inputStream.read(sizeAr);
+        int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+
+        byte[] imageAr = new byte[size];
+        inputStream.read(imageAr);
+
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
+
+        System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
+        ImageIO.write(image, "jpg", new File("C:\\Users\\Jakub\\Pictures\\test2.jpg"));
+		 */
+		
+		
+		
+	
 		
 		socket.close();
 	}
@@ -74,6 +124,16 @@ public class Client {
 		}  
 	}
 
+	private static String[] getImageToProcess() {
+		String[] image = {
+				getInfo("Veuillez entrer le nom de l'image à traiter : ", 
+						"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: "), 
+				getInfo("Comment voulez-vous nommer l'image traitée? ", 
+						"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: ")
+				};
+		
+		return image;
+	}
 	
 	private static String getUser() {
 		return getInfo(
@@ -98,7 +158,7 @@ public class Client {
 			if (userInfo != null && !userInfo.isEmpty() && !userInfo.trim().isEmpty()) {
 				return userInfo;
 			}
-			System.out.format(warningMessage, userInfo);
+			System.out.printf(warningMessage, userInfo);
 		}
 	}
 
@@ -112,10 +172,10 @@ public class Client {
 				if (port <= 5050 && port >= 5000) {
 					return port;
 				}
-				System.out.format("Le port %d est invalide. Veuillez entrer un port entre 5000 et 5050 inclusivement: ", port);
+				System.out.printf("Le port %d est invalide. Veuillez entrer un port entre 5000 et 5050 inclusivement: ", port);
 			} 
 			catch (NumberFormatException e) {
-				System.out.format("Le port %d est invalide. Le port Veuillez entrer un chiffre :", port);
+				System.out.printf("Le port %d est invalide. Le port Veuillez entrer un chiffre :", port);
 			}
 		}
 	}
@@ -128,7 +188,7 @@ public class Client {
 		String IPAddress = sc.nextLine();
 		
 		while (!IPAddress.matches(regex)) {
-			System.out.format("L'adresse IP %s n'est pas valide. Recommencer", IPAddress);
+			System.out.printf("L'adresse IP %s n'est pas valide. Recommencer", IPAddress);
 			IPAddress = sc.nextLine();
 		}
 		
