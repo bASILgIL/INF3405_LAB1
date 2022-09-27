@@ -138,14 +138,14 @@ public class Client {
 	private static String getUser() {
 		return getInfo(
 				"Veuillez entrer votre nom d'utilisateur : ", 
-				"Le nom d'utilisateur %s est invalide. Veuillez entrer un nom d'utilisateur qui n'est pas vide: "
+				"Le nom d'utilisateur %s est invalide. Veuillez entrer un nom d'utilisateur qui n'est pas vide: \n"
 				);
 	}
 	
 	private static String getPassword() {
 		return getInfo(
 				"Veuillez entrer votre mot de passe : ", 
-				"Le mot de passe %s est invalide. Veuillez entrer un mot de passe qui n'est pas vide: "
+				"Le mot de passe %s est invalide. Veuillez entrer un mot de passe qui n'est pas vide: \n"
 				);
 	}
 	
@@ -172,10 +172,10 @@ public class Client {
 				if (port <= 5050 && port >= 5000) {
 					return port;
 				}
-				System.out.printf("Le port %d est invalide. Veuillez entrer un port entre 5000 et 5050 inclusivement: ", port);
+				System.out.printf("Le port %d est invalide. Veuillez entrer un port entre 5000 et 5050 inclusivement: \n", port);
 			} 
 			catch (NumberFormatException e) {
-				System.out.printf("Le port %d est invalide. Le port Veuillez entrer un chiffre :", port);
+				System.out.printf("Le port %d est invalide. Le port Veuillez entrer un chiffre :\n", port);
 			}
 		}
 	}
@@ -188,7 +188,7 @@ public class Client {
 		String IPAddress = sc.nextLine();
 		
 		while (!IPAddress.matches(regex)) {
-			System.out.printf("L'adresse IP %s n'est pas valide. Recommencer", IPAddress);
+			System.out.printf("L'adresse IP %s n'est pas valide. Recommencer\n", IPAddress);
 			IPAddress = sc.nextLine();
 		}
 		
