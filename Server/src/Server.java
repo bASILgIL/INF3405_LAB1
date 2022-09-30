@@ -12,13 +12,12 @@ import java.util.Scanner;
 
 public class Server {
     private static final Scanner sc = new Scanner(System.in);
-    private static ServerSocket listener;
 
     public static void main(String[] args) throws IOException {
         int clientNumber = 0;
         String serverAddress = getIpAddress();
         int serverPort = getPort();
-        listener = new ServerSocket();
+        ServerSocket listener = new ServerSocket();
         listener.setReuseAddress(true);
         InetAddress serverIP = InetAddress.getByName(serverAddress);
 
@@ -63,8 +62,8 @@ public class Server {
     }
 
     private static class ClientHandler extends Thread {
-        private Socket socket;
-        private int clientNumber;
+        private final Socket socket;
+        private final int clientNumber;
 
         public ClientHandler(Socket socket, int clientNumber) {
             this.socket = socket;
@@ -117,7 +116,7 @@ public class Server {
         }
 
         private boolean validateUser(String currentUser, String currentPass) throws IOException {
-            BufferedReader br = new BufferedReader(new FileReader("user.txt"));
+            BufferedReader br = new BufferedReader(new FileReader("Server/User.txt"));
             String line;
             while ((line = br.readLine()) != null) {
                 String[] lineSplit = line.split(";");
