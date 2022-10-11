@@ -50,9 +50,9 @@ public class Client {
 		
 		// Réponse de validation du nom et mot de passe de l'utilisateur du côté serveur
 		
-		String serverAnswer = input.readUTF();
+		Boolean serverAnswer = input.readBoolean();
 		// TODO : success and failure response from server should be in a file with constants
-		if (serverAnswer == "USER_PASSWORD-NOT_FOUND") {
+		if (!serverAnswer) {
 			System.out.println("Erreur dans la saisie du mot de passe");
 			closeConnection();
 			return;
