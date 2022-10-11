@@ -20,10 +20,8 @@ public class Server {
         ServerSocket listener = new ServerSocket();
         listener.setReuseAddress(true);
         InetAddress serverIP = InetAddress.getByName(serverAddress);
-
         listener.bind(new InetSocketAddress(serverIP, serverPort));
         System.out.format("The server is running %s:%d%n", serverAddress, serverPort);
-
         try {
             while (true) {
                 new ClientHandler(listener.accept(), clientNumber++).start();
@@ -82,10 +80,18 @@ public class Server {
                 out.writeBoolean(success);
                 if (success) {
                     BufferedImage image = readImage(in); //https://stackoverflow.com/questions/25086868/how-to-send-images-through-sockets-in-java
-                    sendImage(Sobel.process(image), out);
+                    try {
+                        sendImage(Sobel.process(image), out);
+                    } catch (IOException e) {
+                        System.out.println("File error");
+                    }
+                    boolean received = in.readBoolean();
+                    if (!received) {
+                        System.out.println("Image was not received properly");
+                    }
                 }
             } catch (IOException e) {
-                System.out.println("error handling client#" + clientNumber + " : " + e);
+                System.out.println("Error handling client#" + clientNumber + " : " + e);
             } finally {
                 try {
                     socket.close();
@@ -99,7 +105,6 @@ public class Server {
         private void sendImage(BufferedImage image, DataOutputStream out) throws IOException {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             ImageIO.write(image, "jpg", byteArrayOutputStream);
-
             byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
             out.write(size);
             out.write(byteArrayOutputStream.toByteArray());
@@ -108,10 +113,10 @@ public class Server {
 
         private BufferedImage readImage(DataInputStream inputStream) throws IOException {
             byte[] sizeAr = new byte[4];
-            int size = inputStream.read(sizeAr);
+            inputStream.read(sizeAr);
+            int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
             byte[] imageAr = new byte[size];
-            int test = inputStream.read(imageAr);
-            System.out.println(test);
+            inputStream.read(imageAr);
             return ImageIO.read(new ByteArrayInputStream(imageAr));
         }
 
@@ -131,9 +136,11 @@ public class Server {
         }
 
         private void createUser(String currentUser, String currentPass) throws IOException {
-            BufferedWriter bw = new BufferedWriter(new FileWriter("user.txt", true));
+            BufferedWriter bw = new BufferedWriter(new FileWriter("Server/User.txt", true));
+            bw.newLine();
             bw.write(currentUser + ";" + currentPass);
             bw.close();
+            System.out.println("Utilisateur créé : " + currentUser);
         }
 
     }

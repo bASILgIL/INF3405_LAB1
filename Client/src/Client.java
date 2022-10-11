@@ -33,7 +33,7 @@ public class Client {
         System.out.println("Connection success.");
         boolean flag = true;
         while(flag) {
-            System.out.println("Nom de l'image a modifier :");
+            System.out.println("Nom de l'image a filtrer :");
             String imagePath = sc.nextLine();
             try {
                 BufferedImage image = ImageIO.read(new File(imagePath));
@@ -48,10 +48,12 @@ public class Client {
                 System.out.println("Image invalide");
             }
         }
-        System.out.println("Nom de l'image modifier :");
+        System.out.println("Nom de l'image modifiée :");
         String newName = sc.nextLine();
         BufferedImage newImage = readImage(in);
-        ImageIO.write(newImage, "jpg", new File(newName));
+        //writeBoolean();
+        File outputFile = new File("Client/"+newName +".jpg");
+        ImageIO.write(newImage, "jpg", outputFile);
         socket.close();
     }
 
@@ -59,14 +61,18 @@ public class Client {
         System.out.println("Mot de passe :");
         return sc.nextLine();
     }
+
     private static BufferedImage readImage(DataInputStream inputStream) throws IOException {
         byte[] sizeAr = new byte[4];
-        int size = inputStream.read(sizeAr);
+        inputStream.read(sizeAr);
+        int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+
         byte[] imageAr = new byte[size];
-        int test = inputStream.read(imageAr);
-        System.out.println(test);
+        inputStream.read(imageAr);
+
         return ImageIO.read(new ByteArrayInputStream(imageAr));
     }
+
     private static String getUser() {
         System.out.println("Utilisateur :");
         return sc.nextLine();
