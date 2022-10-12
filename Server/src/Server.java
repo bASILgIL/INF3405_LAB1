@@ -1,54 +1,146 @@
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Scanner;
-import java.util.regex.Pattern;
 
 public class Server {
+    private static final Scanner sc = new Scanner(System.in);
 
-	public static void main(String[] args) {
-		
-		Scanner sc = new Scanner(System.in);
-		System.out.println("Adresse IP : ");
-		String adresseIp = sc.nextLine();
-		String zeroTo255 = "(\\d{1,2}|(0|1)\\" + "d{2}|2[0-4]\\d|25[0-5])";  
-		String regex = zeroTo255 + "\\."+ zeroTo255 + "\\." + zeroTo255 + "\\." + zeroTo255;   
-		while(!adresseIp.matches(regex)) {
-			System.out.println("L'adresse n'est pas valide. Recommencer");
-			adresseIp = sc.nextLine();
-		}
-		System.out.println("Port : ");
-		String port;
-		while(true) {
-		try {
-			port = sc.nextLine();
-			if(Integer.parseInt(port) <= 5050 && Integer.parseInt(port) >= 5000) {
-				break;
-			}
-			System.out.println("Veuillez rentrer un port entre 5000 et 5050 : ");
-		}catch(NumberFormatException e) {
-			System.out.println("Veuillez rentrer un chiffre :");
-		}
-		}
+    public static void main(String[] args) throws IOException {
+        int clientNumber = 0;
+        String serverAddress = getIpAddress();
+        int serverPort = getPort();
+        ServerSocket listener = new ServerSocket();
+        listener.setReuseAddress(true);
+        InetAddress serverIP = InetAddress.getByName(serverAddress);
+        listener.bind(new InetSocketAddress(serverIP, serverPort));
+        System.out.format("The server is running %s:%d%n", serverAddress, serverPort);
+        try {
+            while (true) {
+                new ClientHandler(listener.accept(), clientNumber++).start();
+            }
+        } finally {
+            listener.close();
+        }
+    }
 
-		
-//		
-//		String host = args.length < 0 ? args[0] : "localhost";
-//		
-//		for (int i = 5000; i < 5050; i++) {
-//			
-//			try (Socket s = new Socket(host, i)){
-//				
-//				System.out.println("There is a server on port " + i + " of " + host);
-//				
-//			} catch (UnknownHostException e) {
-//				
-//				System.err.println(e);
-//				break;
-//				
-//			} catch (IOException e) {
-//				
-//			}
-//		}
-	}
+    private static int getPort() {
+        System.out.println("Port : ");
+        int port;
+        while (true) {
+            try {
+                port = Integer.parseInt(sc.nextLine());
+                if (port <= 5050 && port >= 5000) {
+                    return port;
+                }
+                System.out.println("Veuillez rentrer un port entre 5000 et 5050 : ");
+            } catch (NumberFormatException e) {
+                System.out.println("Veuillez rentrer un chiffre :");
+            }
+        }
+    }
 
+    private static String getIpAddress() {
+        System.out.println("Adresse IP : ");
+        String IPAddress = sc.nextLine();
+        String zeroTo255 = "(\\d{1,2}|(0|1)\\" + "d{2}|2[0-4]\\d|25[0-5])";
+        String regex = zeroTo255 + "\\." + zeroTo255 + "\\." + zeroTo255 + "\\." + zeroTo255;
+        while (!IPAddress.matches(regex)) {
+            System.out.println("L'adresse n'est pas valide. Recommencer");
+            IPAddress = sc.nextLine();
+        }
+        return IPAddress;
+    }
+
+    private static class ClientHandler extends Thread {
+        private final Socket socket;
+        private final int clientNumber;
+
+        public ClientHandler(Socket socket, int clientNumber) {
+            this.socket = socket;
+            this.clientNumber = clientNumber;
+
+            System.out.println("New connection with client#" + clientNumber + " at " + socket);
+        }
+
+        public void run() {
+            try {
+                DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+                String idUser = in.readUTF();
+                String pass = in.readUTF();
+                boolean success = validateUser(idUser, pass); //True if user and pass are good or new user
+                out.writeBoolean(success);
+                if (success) {
+                    BufferedImage image = readImage(in); //https://stackoverflow.com/questions/25086868/how-to-send-images-through-sockets-in-java
+                    try {
+                        sendImage(Sobel.process(image), out);
+                    } catch (IOException e) {
+                        System.out.println("File error");
+                    }
+                    boolean received = in.readBoolean();
+                    if (!received) {
+                        System.out.println("Image was not received properly");
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Error handling client#" + clientNumber + " : " + e);
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    System.out.println("Could not close a socket");
+                }
+                System.out.println("Connection with client#" + clientNumber + " closed");
+            }
+        }
+
+        private void sendImage(BufferedImage image, DataOutputStream out) throws IOException {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", byteArrayOutputStream);
+            byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+            out.write(size);
+            out.write(byteArrayOutputStream.toByteArray());
+            out.flush();
+        }
+
+        private BufferedImage readImage(DataInputStream inputStream) throws IOException {
+            byte[] sizeAr = new byte[4];
+            inputStream.read(sizeAr);
+            int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+            byte[] imageAr = new byte[size];
+            inputStream.read(imageAr);
+            return ImageIO.read(new ByteArrayInputStream(imageAr));
+        }
+
+        private boolean validateUser(String currentUser, String currentPass) throws IOException {
+            BufferedReader br = new BufferedReader(new FileReader("Server/User.txt"));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] lineSplit = line.split(";");
+                String savedUser = lineSplit[0];
+                String savedPass = lineSplit[1];
+                if (Objects.equals(savedUser, currentUser)) {
+                    return Objects.equals(savedPass, currentPass);
+                }
+            }
+            createUser(currentUser, currentPass);
+            return true;
+        }
+
+        private void createUser(String currentUser, String currentPass) throws IOException {
+            BufferedWriter bw = new BufferedWriter(new FileWriter("Server/User.txt", true));
+            bw.newLine();
+            bw.write(currentUser + ";" + currentPass);
+            bw.close();
+            System.out.println("Utilisateur créé : " + currentUser);
+        }
+
+    }
 }

@@ -1,6 +1,9 @@
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
 
 public class Client {
 	private static Scanner sc = new Scanner(System.in);
@@ -8,32 +11,26 @@ public class Client {
 	private static DataInputStream input = null;
 	private static DataOutputStream output = null;
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws IOException {
 		
 		// Adresse et port du serveur
-		
 		String serverAddress = getIpAddress();
 		int serverPort = getPort();
 		
 		// Nom d'utilisateur et mot de passe
-		
 		String userName = getUser();
 		String password = getPassword();
 		
 		// try/catch inspiré de : https://www.geeksforgeeks.org/socket-programming-in-java/
-		
 		try {
 			// Création d'une connection
-			
 			socket = new Socket(serverAddress,serverPort);
 			System.out.printf("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
 			
 			// Création d'un canal pour recevoir les messages du serveur
-			
 			input = new DataInputStream(socket.getInputStream());
 			
 			// Création d'un canal pour envoyer des messages au serveur 
-			
 			output = new DataOutputStream(socket.getOutputStream());
 		}
 	    catch(UnknownHostException u) {
@@ -44,95 +41,97 @@ public class Client {
 	    }
 		
 		// Envoie du nom et mot de passe de l'utilisateur
+		writeString(userName);
+		writeString(password);
 		
-		output.writeUTF(userName);
-		output.writeUTF(password);
-		
-		// Réponse de validation du nom et mot de passe de l'utilisateur du côté serveur
-		
-		Boolean serverAnswer = input.readBoolean();
-		// TODO : success and failure response from server should be in a file with constants
-		if (!serverAnswer) {
+		// Validation du nom et mot de passe de l'utilisateur du côté serveur
+		Boolean isUserInfoValid = input.readBoolean();
+		if (!isUserInfoValid) {
 			System.out.println("Erreur dans la saisie du mot de passe");
 			closeConnection();
 			return;
 		}
-		
-		// Message de validation de connection
-		
 		System.out.println("La connection a été établie");
-		
-		// Demande d'image à traiter
-		
-		String[] imageToTreat = getImageToProcess();
-		
-		// Envoie de l'image à traiter et du nom que l'utilisateur désire lui asttribuer
-		// TODO : gerer lenvoi => dans une methode
-		
-		output.writeUTF(imageToTreat[0]);
-		output.writeUTF(imageToTreat[1]);
-		
-		/*
-		BufferedImage image = ImageIO.read(new File("C:\\Users\\Jakub\\Pictures\\test.jpg"));
-
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        ImageIO.write(image, "jpg", byteArrayOutputStream);
-
-        byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
-        outputStream.write(size);
-        outputStream.write(byteArrayOutputStream.toByteArray());
-        outputStream.flush();
-        System.out.println("Flushed: " + System.currentTimeMillis());
-        */
-		
-		System.out.printf("L'image %s a été envoyé à %s pour être traitée.", imageToTreat[0], System.nanoTime());
+	
+		// Envoie de l'image à traiter
+		String imagePath = sendImageToProcess();
+		String newImageName = getNewImageName();
+		System.out.printf("L'image %s a été envoyée à %s pour être traitée.", imagePath, System.nanoTime());
 		
 		// Reception de l'image traitée
-		// TODO : gerer la reception de limage => dans une methode
+		// Inspiré de : https://stackoverflow.com/questions/25086868/how-to-send-images-through-sockets-in-java
+		BufferedImage processedImage = readImage();
 		
-		String processedImage = input.readUTF();
+		// Envoie de la confirmation de réception de l'image traitée
+		output.writeBoolean(true);
+       
+		// Enregistrement de l'image traitée
+		saveImage(newImageName, processedImage);
 		
-		/*
-		byte[] sizeAr = new byte[4];
-        inputStream.read(sizeAr);
-        int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
-
-        byte[] imageAr = new byte[size];
-        inputStream.read(imageAr);
-
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageAr));
-
-        System.out.println("Received " + image.getHeight() + "x" + image.getWidth() + ": " + System.currentTimeMillis());
-        ImageIO.write(image, "jpg", new File("C:\\Users\\Jakub\\Pictures\\test2.jpg"));
-		 */
+		// Lors de la réception de l’image traitée, le client
+        // devra aussi avertir l’utilisateur de cet événement et devra aussi lui indiquer le chemin vers l’image reçue du
+        // serveur
+		// Confirmation de réception de l'image traitée
+		System.out.printf("L'image %s a été traitée.  Elle se trouve ici : Client/images/%s.jpg", newImageName);
 		
-		
-		
+		// Fermeture de la connection
+		closeConnection();
+	}
 	
-		
+	private static void saveImage(String imageName, BufferedImage processedImage) throws IOException {
+		File outputFile = new File("Client/images/"+ imageName +".jpg");
+		ImageIO.write(processedImage, "jpg", outputFile);
+	}
+	
+	private static void writeString(String message) throws IOException {
+		output.writeUTF(message);
+		output.flush();
+	}
+	
+	private static void closeConnection() throws IOException {
+		input.close();
+		output.close();
 		socket.close();
 	}
 	
-	private static void closeConnection() {
-		try {
-			input.close();
-			output.close();
-			socket.close();
-		} 
-		catch (IOException e) {
-			e.printStackTrace();
-		}  
+	private static String sendImageToProcess() {
+		String imagePath = "";
+		boolean isImageValid = false;
+		while (!isImageValid) {
+			// Demande de l'image à traiter
+			imagePath = getPathImageToProcess();
+			try {
+				sendImage(imagePath);
+	            isImageValid = true;
+	            
+	        } catch (IOException e) {
+	            System.out.println("Image invalide");
+	        }
+		}
+		return imagePath;
 	}
-
-	private static String[] getImageToProcess() {
-		String[] image = {
-				getInfo("Veuillez entrer le nom de l'image à traiter : ", 
-						"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: "), 
-				getInfo("Comment voulez-vous nommer l'image traitée? ", 
-						"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: ")
-				};
+	
+	private static void sendImage(String imagePath) throws IOException {
+		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+		byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
 		
-		return image;
+        BufferedImage image = ImageIO.read(new File(imagePath));
+        ImageIO.write(image, "jpg", byteArrayOutputStream);
+        
+        // Envoie de l'image au serveur
+        output.write(size);
+        output.write(byteArrayOutputStream.toByteArray());
+        output.flush();
+	}
+	
+	private static String getPathImageToProcess() {
+		return getInfo("Veuillez entrer le nom (chemin d'accès) de l'image à traiter : ", 
+				"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: ");
+	}
+	
+	private static String getNewImageName() {
+		return getInfo("Comment voulez-vous nommer l'image traitée? ", 
+				"Le nom d'image %s est invalide. Veuillez entrer un nom qui n'est pas vide: ");
 	}
 	
 	private static String getUser() {
@@ -194,5 +193,16 @@ public class Client {
 		
 		return IPAddress;
 	}
+	
+	private static BufferedImage readImage() throws IOException {
+        byte[] sizeAr = new byte[4];
+        input.read(sizeAr);
+        int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
+
+        byte[] imageAr = new byte[size];
+        input.read(imageAr);
+
+        return ImageIO.read(new ByteArrayInputStream(imageAr));
+    }
 
 }
