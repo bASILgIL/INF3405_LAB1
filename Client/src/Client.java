@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 
 public class Client {
 	private static Scanner sc = new Scanner(System.in);
-	private static Socket socket = null;
+	private static Socket socket;
 	private static DataInputStream input;
 	private static DataOutputStream output;
 
