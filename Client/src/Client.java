@@ -19,7 +19,7 @@ public class Client {
 		
 		// Création d'une connection
 		socket = new Socket(serverAddress,serverPort);
-		System.out.printf("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
+		System.out.printf("Le serveur fonctionne sur %s:%d%n\n", serverAddress,serverPort); // add \n
 			
 		// Création d'un canal pour recevoir les messages du serveur
 		input = new DataInputStream(socket.getInputStream());
