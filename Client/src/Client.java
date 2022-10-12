@@ -68,9 +68,6 @@ public class Client {
 		// Enregistrement de l'image traitée
 		saveImage(newImageName, processedImage);
 		
-		// Lors de la réception de l’image traitée, le client
-        // devra aussi avertir l’utilisateur de cet événement et devra aussi lui indiquer le chemin vers l’image reçue du
-        // serveur
 		// Confirmation de réception de l'image traitée
 		System.out.printf("L'image %s a été traitée.  Elle se trouve ici : Client/images/%s.jpg", newImageName);
 		
