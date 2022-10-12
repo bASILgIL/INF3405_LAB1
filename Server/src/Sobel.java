@@ -5,7 +5,7 @@ public class Sobel {
     
 	public static BufferedImage process(BufferedImage image) throws IOException 
 	{
-	  System.out.println("applying filter");
+	  System.out.println("Application du filtre");
 	
 	  int x = image.getWidth();
 	  int y = image.getHeight();
@@ -61,7 +61,7 @@ public class Sobel {
       
       fillOutlineWithZeros(image, x, y);
       
-      System.out.println("Finished");
+      System.out.println("Terminée");
       
       return image;
   }
