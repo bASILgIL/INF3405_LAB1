@@ -8,8 +8,8 @@ import java.nio.ByteBuffer;
 public class Client {
 	private static Scanner sc = new Scanner(System.in);
 	private static Socket socket = null;
-	private static DataInputStream input = null;
-	private static DataOutputStream output = null;
+	private static DataInputStream input;
+	private static DataOutputStream output;
 
 	public static void main(String[] args) throws IOException {
 		
@@ -17,28 +17,19 @@ public class Client {
 		String serverAddress = getIpAddress();
 		int serverPort = getPort();
 		
+		// Création d'une connection
+		socket = new Socket(serverAddress,serverPort);
+		System.out.printf("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
+			
+		// Création d'un canal pour recevoir les messages du serveur
+		input = new DataInputStream(socket.getInputStream());
+			
+		// Création d'un canal pour envoyer des messages au serveur 
+		output = new DataOutputStream(socket.getOutputStream());
+		
 		// Nom d'utilisateur et mot de passe
 		String userName = getUser();
 		String password = getPassword();
-		
-		// try/catch inspiré de : https://www.geeksforgeeks.org/socket-programming-in-java/
-		try {
-			// Création d'une connection
-			socket = new Socket(serverAddress,serverPort);
-			System.out.printf("Le serveur fonctionne sur %s:%d%n", serverAddress,serverPort);
-			
-			// Création d'un canal pour recevoir les messages du serveur
-			input = new DataInputStream(socket.getInputStream());
-			
-			// Création d'un canal pour envoyer des messages au serveur 
-			output = new DataOutputStream(socket.getOutputStream());
-		}
-	    catch(UnknownHostException u) {
-	    	System.out.println(u);
-	    }
-	    catch(IOException i) {
-	        System.out.println(i);
-	    }
 		
 		// Envoie du nom et mot de passe de l'utilisateur
 		writeString(userName);
