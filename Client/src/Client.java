@@ -1,12 +1,12 @@
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.nio.ByteBuffer;
 
 public class Client {
-	private static Scanner sc = new Scanner(System.in);
+	private static final Scanner sc = new Scanner(System.in);
 	private static Socket socket;
 	private static DataInputStream input;
 	private static DataOutputStream output;
@@ -22,11 +22,13 @@ public class Client {
 		System.out.printf("Le serveur fonctionne sur %s:%d%n\n", serverAddress,serverPort);
 			
 		// Création d'un canal pour recevoir les messages du serveur
-		input = new DataInputStream(socket.getInputStream());
-			
-		// Création d'un canal pour envoyer des messages au serveur 
-		output = new DataOutputStream(socket.getOutputStream());
-		
+		InputStream in = socket.getInputStream();
+		input = new DataInputStream(new BufferedInputStream(in));
+
+		// Création d'un canal pour envoyer des messages au serveur
+		OutputStream out = socket.getOutputStream();
+		output = new DataOutputStream(out);
+
 		// Nom d'utilisateur et mot de passe
 		String userName = getUser();
 		String password = getPassword();
@@ -36,7 +38,7 @@ public class Client {
 		writeString(password);
 		
 		// Validation du nom et mot de passe de l'utilisateur du côté serveur
-		Boolean isUserInfoValid = input.readBoolean();
+		boolean isUserInfoValid = input.readBoolean();
 		if (!isUserInfoValid) {
 			System.out.println("Erreur dans la saisie du mot de passe");
 			closeConnection();
@@ -45,15 +47,15 @@ public class Client {
 		System.out.println("La connection a été établie.\n");
 	
 		// Envoie de l'image à traiter
-		String imagePath = sendImageToProcess();
-		writeString(imagePath);
+		sendImageToProcess();
 		String newImageName = getNewImageName();
-		System.out.printf("L'image %s a été envoyée pour être traitée.\n", imagePath);
+		writeString(newImageName);
+		System.out.printf("L'image \"%s\" a été envoyée pour être traitée.\n", newImageName);
 		
 		// Reception de l'image traitée
 		// Inspiré de : https://stackoverflow.com/questions/25086868/how-to-send-images-through-sockets-in-java
 		BufferedImage processedImage = readImage();
-		
+
 		// Envoie de la confirmation de réception de l'image traitée
 		output.writeBoolean(true);
        
@@ -61,7 +63,7 @@ public class Client {
 		saveImage(newImageName, processedImage);
 		
 		// Confirmation de réception de l'image traitée
-		System.out.printf("L'image %s a été traitée.  Elle se trouve ici : Client/images/%s.jpg", newImageName, newImageName);
+		System.out.printf("L'image \"%s\" a été traitée.  Elle se trouve ici : Client/images/%s.jpg", newImageName, newImageName);
 		
 		// Fermeture de la connection
 		closeConnection();
@@ -135,50 +137,41 @@ public class Client {
 		
 		return IPAddress;
 	}
-	
+
 	private static BufferedImage readImage() throws IOException {
-        byte[] sizeAr = new byte[4];
-        input.read(sizeAr);
-        int size = ByteBuffer.wrap(sizeAr).asIntBuffer().get();
-
-        byte[] imageAr = new byte[size];
-        input.read(imageAr);
-
-        return ImageIO.read(new ByteArrayInputStream(imageAr));
-    }
+		int size = input.readInt();
+		byte[] imageAr = new byte[size];
+		input.readFully(imageAr);
+		return ImageIO.read(new ByteArrayInputStream(imageAr));
+	}
 	
 	private static void saveImage(String imageName, BufferedImage processedImage) throws IOException {
 		File outputFile = new File("Client/images/"+ imageName +".jpg");
 		ImageIO.write(processedImage, "jpg", outputFile);
 	}
 	
-	private static String sendImageToProcess() {
-		String imagePath = "";
+	private static void sendImageToProcess() {
+		String imagePath;
 		boolean isImageValid = false;
 		while (!isImageValid) {
 			// Demande de l'image à traiter
 			imagePath = getPathImageToProcess();
 			try {
-				sendImage(imagePath);
+				sendImage(ImageIO.read(new File(imagePath)));
 	            isImageValid = true;
-	            
 	        } catch (IOException e) {
 	            System.out.println("Image invalide");
 	        }
 		}
-		return imagePath;
 	}
-	
-	private static void sendImage(String imagePath) throws IOException {
-		BufferedImage image = ImageIO.read(new File(imagePath));
+
+	private static void sendImage(BufferedImage image) throws IOException {
 		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 		ImageIO.write(image, "jpg", byteArrayOutputStream);
-		byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
-		
-        // Envoie de l'image au serveur
-        output.write(size);
-        output.write(byteArrayOutputStream.toByteArray());
-        output.flush();
+		output.writeInt(byteArrayOutputStream.size());
+		output.write(byteArrayOutputStream.toByteArray());
+		output.flush();
+		byteArrayOutputStream.close();
 	}
 	
 	private static void writeString(String message) throws IOException {
